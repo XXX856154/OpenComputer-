@@ -55,7 +55,7 @@ end;
          local uranSlot=chest.checkUranSlotIsEnough(direction["drainedUranChest"],uranPull);
            while not uranSlot  do  
            print("箱子槽位不足,请取出物品");
-           heSlot=chest.checkUranSlotIsEnough(direction["heChest"],uranPull);
+           uranSlot=chest.checkUranSlotIsEnough(direction["heChest"],uranPull);
            os.sleep(3);
            end;
             reactorControl.pullUranAndHe(nil,uranPull,direction["reactor"],direction["drainedUranChest"],direction["heChest"],nil,uranSlot);
