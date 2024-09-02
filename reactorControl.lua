@@ -250,11 +250,13 @@ local function firstPut(heSide,uranSide,reactorSide)
           for  k,v in pairs(heCheck) do  
 
                if v> 0  then --检测数量
-                 
-                 transposer.transferItem(heSide,reactorSide,1,k,key);
+             
+                 local flg=transposer.transferItem(heSide,reactorSide,1,k,key);
+                 if flg~=0 then
                  v=v-1;
                 heCheck[k]=v;--优化，减少执行的次数
                 break; 
+                end;
                 end;
            end;
        end;
@@ -267,10 +269,12 @@ local function firstPut(heSide,uranSide,reactorSide)
           for k,v in pairs(uranCheck) do 
     
             if v>0  then 
-            transposer.transferItem(uranSide,reactorSide,1,k,key);
+            local flg=transposer.transferItem(uranSide,reactorSide,1,k,key);
+             if flg~=0 then
                v=v-1;
                uranCheck[k]=v;--优化，减少循环次数
                break;
+              end;
             end;
           end
       end;
