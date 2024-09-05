@@ -3,6 +3,7 @@ local sides=require("sides");
 --local gt=com.gt_machine;
 --local totalEU=gt.getStoredEU();
 --local capacity=gt.getEUCapacity();
+
 local JSON = (loadfile "JSON.lua")()
 local heliumCoolantcell={};
 local uraniumQuadrupleFuel={};
@@ -12,6 +13,13 @@ uranChest=sides.west,--燃料棒存放位置
 heChest=sides.east,--冷却单元存放位置
 drainedUranChest=sides.up,--枯竭燃料棒存放的箱子
 outSideRed=sides.up--外置红石信号位置
+}
+
+local mode={
+   noneBuffer=0,--没有能源缓存
+   gtBattery=1,--使用电池箱缓存
+   batterySize=16,--电池箱大小
+   gtMachine=0--使用电容库缓存
 }
 local function load()
 
@@ -66,5 +74,6 @@ return {
   heliumCoolantcell=heliumCoolantcell,
   uraniumQuadrupleFuel=uraniumQuadrupleFuel,
   minecraftToRealTime=minecraftToRealTime,
-  direction=direction
+  direction=direction,
+  mode=mode
 }
