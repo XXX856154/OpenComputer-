@@ -44,11 +44,13 @@ local function checkReactor(side)
 
    for i=1,size do
     local item=transposer.getStackInSlot(side,i)
+  
      if  item~=nil then
         
            if not hash[item.name] or item.damage >=hash[item.name][i].damage then 
                 return false;
            end
+	
        
      else 
         return false;
@@ -138,7 +140,7 @@ local function pullUranAndHe(hePull,uranPull,reactorSide,uranDrainedChestSide,he
     
       while uranSize >0 and index<=#uranPutSlot do --放置枯竭燃料棒
         
-        if slotSize >value.size then
+        if slotSize >=value.size then
           transposer.transferItem(reactorSide,uranDrainedChestSide,value.size,key,index);
           slotSize=slotSize-value.size;
           uranSize=uranSize-value.size;
