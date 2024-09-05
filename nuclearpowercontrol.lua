@@ -93,13 +93,14 @@ end;
       if outSide~=0 and isReady and gtStoredEU<gtBatteryMaxEU*0.85 then --满足才启动
         print("核电仓启动中");
         redControl.start(direction["reactor"]);
-      elseif gtStoredEU>=gtBatteryMaxEU*0.85 then 
-          print("电量充足，暂停关机");
-          redControl.stop(direction["reactor"]); 
       elseif outSide==0  then 
          print("接受到外部信号，关闭核电仓");
         redControl.stop(direction["reactor"]); 
         os.exit();
+      elseif gtStoredEU>=gtBatteryMaxEU*0.85 then 
+          print("电量充足，暂停关机");
+          redControl.stop(direction["reactor"]); 
+ 
       else 
           print("核电仓不满足配置，无法启动");
          redControl.stop(direction["reactor"]); 
