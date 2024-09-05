@@ -5,6 +5,7 @@ local reactorControl=require("reactorControl");
 local config=require("reactorConfig");
 local chest=require("chestControl");
 local direction=config.direction;
+local mode=config.mode;
 --第一次启动，先检查反应堆
 
 local isReady=reactorControl.checkReactor(direction["reactor"]);
@@ -21,9 +22,21 @@ end;
 
 
    local startTime=os.time();--返回的是mc世界创建以来的时间
- 
+   local gtBattery;
+   local gtBatteryMaxEU;
+   local gtMachine;
+   local gtMachineMaxEU;
+     if mode.noneBuffer ~= 0  then
+     elseif mode.gtBattery==1 then gtBattery=com.gt_batterybuffer; 
+     gtBatteryMaxEU=gtBattery.getMaxBatteryCharge(1)*mode.batterySize+gtBattery.getEUCapacity();
+     end;
+
    while true do 
-   
+    
+
+     
+     
+
      local hePull=reactorControl.checkReactorDamage(direction["reactor"]);--检查受损的冷却单元
        
      
@@ -55,7 +68,7 @@ end;
          local uranSlot=chest.checkUranSlotIsEnough(direction["drainedUranChest"],uranPull);
            while not uranSlot  do  
            print("箱子槽位不足,请取出物品");
-           uranSlot=chest.checkUranSlotIsEnough(direction["heChest"],uranPull);
+           uranSlot=chest.checkUranSlotIsEnough(direction["drainedUranChest"],uranPull);
            os.sleep(3);
            end;
             reactorControl.pullUranAndHe(nil,uranPull,direction["reactor"],direction["drainedUranChest"],direction["heChest"],nil,uranSlot);
@@ -71,16 +84,22 @@ end;
      
       end;
 
+      local gtStoredEU=gtBattery.getBatteryCharge(1)*mode.batterySize+gtBattery.getEUStored();
+      print("当前电量:"..gtStoredEU.."/"..gtBatteryMaxEU);
   --检查是否满足配置
     local isReady=reactorControl.checkReactor(direction["reactor"]);
     
       local outSide=redControl.getOutSide(direction["outSideRed"]);
-      if outSide~=0 and isReady then --满足才启动
+      if outSide~=0 and isReady and gtStoredEU<gtBatteryMaxEU*0.85 then --满足才启动
         print("核电仓启动中");
         redControl.start(direction["reactor"]);
-      elseif outSide==0 then 
+      elseif gtStoredEU>=gtBatteryMaxEU*0.85 then 
+          print("电量充足，暂停关机");
+          redControl.stop(direction["reactor"]); 
+      elseif outSide==0  then 
          print("接受到外部信号，关闭核电仓");
         redControl.stop(direction["reactor"]); 
+        os.exit();
       else 
           print("核电仓不满足配置，无法启动");
          redControl.stop(direction["reactor"]); 
