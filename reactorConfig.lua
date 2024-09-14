@@ -17,9 +17,11 @@ outSideRed=sides.up--外置红石信号位置
 
 local mode={
    noneBuffer=0,--没有能源缓存
-   gtBattery=1,--使用电池箱缓存
+   gtBattery=0,--使用电池箱缓存
+   gtMachine=1,--使用电容库缓存
    batterySize=16,--电池箱大小
-   gtMachine=0--使用电容库缓存
+   capacity=0.85--到达多少电量停机
+  
 }
 local function load()
 
