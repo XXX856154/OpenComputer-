@@ -26,16 +26,57 @@ end;
    local gtBatteryMaxEU;
    local gtMachine;
    local gtMachineMaxEU;
-     if mode.noneBuffer ~= 0  then
+     if mode.noneBuffer == 1  then
      elseif mode.gtBattery==1 then gtBattery=com.gt_batterybuffer; 
      gtBatteryMaxEU=gtBattery.getMaxBatteryCharge(1)*mode.batterySize+gtBattery.getEUCapacity();
-     end;
+     elseif mode.gtMachine==1 then gtMachine=com.gt_machine; 
+      gtMachineMaxEU=gtMachine.getEUMaxStored();
+      end;
+     
 
-   while true do 
+local function start(outSide,isReady)
+
+     if outSide~=0 and isReady  then --满足才启动
+        print("核电仓启动中");
+        redControl.start(direction["reactor"]);
+      elseif outSide==0  then 
+         print("接受到外部信号，关闭核电仓");
+        redControl.stop(direction["reactor"]); 
+        os.exit();
+      else 
+          print("核电仓不满足配置，无法启动");
+         redControl.stop(direction["reactor"]); 
+      end
+
+end
+           
+local function gtBatteryStart(outSide,isReady)
     
+     start(outSide,isReady);
 
-     
-     
+      local gtStoredEU=gtBattery.getBatteryCharge(1)*mode.batterySize+gtBattery.getEUStored();
+      print("可存储电量为:"..gtBatteryMaxEU);
+      print(string.format("当前电量: %.2f%%",gtStoredEU/gtBatteryMaxEU*100));
+      if gtStoredEU>=gtBatteryMaxEU*mode.capacity then  
+          print("电量充足，暂停关机");
+          redControl.stop(direction["reactor"]); 
+      end
+ 
+end
+local function machineStart(outSide,isReady)
+       start(outSide,isReady);
+       local gtStoredEU=gtMachine.getEUStored()
+       print("可存储电量为:"..gtMachineMaxEU);
+       print(string.format("当前电量: %.2f%%",gtStoredEU/gtMachineMaxEU*100));
+      if gtStoredEU>=gtMachineMaxEU *mode.capacity then 
+          print("电量充足，暂停关机");
+          redControl.stop(direction["reactor"]); 
+      end
+
+end
+local function checkHe()
+
+ 
 
      local hePull=reactorControl.checkReactorDamage(direction["reactor"]);--检查受损的冷却单元
        
@@ -60,6 +101,10 @@ end;
            reactorControl.putFuelAndHe(hePull,nil,direction["heChest"],direction["uranChest"],direction["reactor"],he,nil);
      
         end;
+
+end;
+local function checkUran()
+
        local uranPull=reactorControl.checkReactorFuelDrained(direction["reactor"]);
       if uranPull then 
        
@@ -83,29 +128,24 @@ end;
            reactorControl.putFuelAndHe(nil,uranPull,direction["heChest"],direction["uranChest"],direction["reactor"],nil,uran);
      
       end;
+end;
 
-      local gtStoredEU=gtBattery.getBatteryCharge(1)*mode.batterySize+gtBattery.getEUStored();
-      print("当前电量:"..gtStoredEU.."/"..gtBatteryMaxEU);
-  --检查是否满足配置
-    local isReady=reactorControl.checkReactor(direction["reactor"]);
+   while true do 
     
-      local outSide=redControl.getOutSide(direction["outSideRed"]);
-      if outSide~=0 and isReady and gtStoredEU<gtBatteryMaxEU*0.85 then --满足才启动
-        print("核电仓启动中");
-        redControl.start(direction["reactor"]);
-      elseif outSide==0  then 
-         print("接受到外部信号，关闭核电仓");
-        redControl.stop(direction["reactor"]); 
-        os.exit();
-      elseif gtStoredEU>=gtBatteryMaxEU*0.85 then 
-          print("电量充足，暂停关机");
-          redControl.stop(direction["reactor"]); 
- 
-      else 
-          print("核电仓不满足配置，无法启动");
-         redControl.stop(direction["reactor"]); 
-      end
- 
+   checkHe();--检查受损冷却单元
+   checkUran();--检查燃料棒是否枯竭
+     
+    
+     --检查是否满足配置
+    local isReady=reactorControl.checkReactor(direction["reactor"]);
+    local outSide=redControl.getOutSide(direction["outSideRed"]);
+    if mode.gtBattery==1 then
+   gtBatteryStart(outSide,isReady);
+   elseif mode.gtMachine==1 then 
+       machineStart(outSide,isReady);
+   else 
+    start(outSide,isReady);
+  end;
     local excutionTime=os.time();
     local totalTime=excutionTime-startTime;
     print("已运行时间:"..config.minecraftToRealTime(totalTime));
@@ -113,8 +153,7 @@ end;
    end;
               
 
-             
-           
-    
 
+
+    
   
