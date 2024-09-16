@@ -5,11 +5,10 @@ local chest = require("chestControl")
 local sides=require("sides");
 local redControl=require("redControl");
 --定义变量
-local transposer=component.transposer;
 local direction=config.direction;--方向
 local uraniumQuadrupleFuel =config.uraniumQuadrupleFuel;--燃料配置
 local heliumCoolantcell =config.heliumCoolantcell;--冷却单元配置
-local size=transposer.getInventorySize(direction["reactor"]);  --核电仓的大小
+local size=config.rconfig.size --核电仓的大小
 local he=heliumCoolantcell.name;--冷却单元名字
 local uranium=uraniumQuadrupleFuel.name;--燃料名字
 
@@ -37,14 +36,14 @@ hash[uranium]=uranSlotHash
 
 --检查核电仓是否满足配置
 ------
-local function checkReactor(side)
+local function checkReactor(transposer,side)
    local uranNam=uraniumQuadrupleFuel.count;
    local heliumNam=heliumCoolantcell.count;
-   
+
 
    for i=1,size do
     local item=transposer.getStackInSlot(side,i)
-  
+
      if  item~=nil then
         
            if not hash[item.name] or item.damage >=hash[item.name][i].damage then 
@@ -62,7 +61,7 @@ local function checkReactor(side)
  end;  
 ------
 --检查核电仓冷却剂的损坏程度
-local function checkReactorDamage(side)
+local function checkReactorDamage(transposer,side)
 
   local heSlot=heliumCoolantcell.slot;
   local heliumDamage=heliumCoolantcell.damage;
@@ -88,7 +87,7 @@ end;
     
 --检查枯竭燃料棒
 
-local function checkReactorFuelDrained(side)
+local function checkReactorFuelDrained(transposer,side)
 
   local uraniumSlot = uraniumQuadrupleFuel.slot
   local drainedName = uraniumQuadrupleFuel.changeName
@@ -113,7 +112,7 @@ local function checkReactorFuelDrained(side)
 
  end;
 
-local function pullUranAndHe(hePull,uranPull,reactorSide,uranDrainedChestSide,heChestSide,hePutSlot,uranPutSlot)
+local function pullUranAndHe(transposer,hePull,uranPull,reactorSide,uranDrainedChestSide,heChestSide,hePutSlot,uranPutSlot)
    if not reactorSide or  not uranDrainedChestSide or not heChestSide then
     print("该函数需要反应堆方向，枯竭燃料箱方向，冷却剂箱方向");
     return ;
@@ -197,7 +196,7 @@ local function pullUranAndHe(hePull,uranPull,reactorSide,uranDrainedChestSide,he
 
 
 --根据上面取出的位置，直接放入
-local function putFuelAndHe(hePull,uranPull,heChestSide,uranChestSide,reactorSide,he,uran)
+local function putFuelAndHe(transposer,hePull,uranPull,heChestSide,uranChestSide,reactorSide,he,uran)
     local checkTable=chest.checkHasReplace(hePull,uranPull);
   
    if he then  --检查是否足够材料
@@ -237,9 +236,9 @@ local function putFuelAndHe(hePull,uranPull,heChestSide,uranChestSide,reactorSid
 end;
 
 --第一次启动放入所有材料
-local function firstPut(heSide,uranSide,reactorSide)
-   local uranCheck=chest.checkUran();
-   local heCheck=chest.checkHe();
+local function firstPut(transposer,heSide,uranSide,reactorSide)
+   local uranCheck=chest.checkUran(transposer);
+   local heCheck=chest.checkHe(transposer);
    local heHash=hash[he];
    local uranHash=hash[uranium];
    local returnTable={false,false};
