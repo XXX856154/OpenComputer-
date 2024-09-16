@@ -3,7 +3,7 @@
         {
             "name": "gregtech:gt.360k_Helium_Coolantcell",
             "changeName": "nil",  
-            "dmg": 85,
+            "dmg": 75,
             "count": 14,
             "slot": [
                 3,
