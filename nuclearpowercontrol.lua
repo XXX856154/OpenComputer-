@@ -6,11 +6,12 @@ local config=require("reactorConfig");
 local chest=require("chestControl");
 local direction=config.direction;
 local mode=config.mode;
+local transposer=com.transposer;
 --第一次启动，先检查反应堆
 
-local isReady=reactorControl.checkReactor(direction["reactor"]);
+local isReady=reactorControl.checkReactor(transposer,direction["reactor"]);
 if not isReady  then --说明核电仓没准备好
-   local returnTable=reactorControl.firstPut(direction["heChest"],direction["uranChest"],direction["reactor"]);--放置原料
+   local returnTable=reactorControl.firstPut(transposer,direction["heChest"],direction["uranChest"],direction["reactor"]);--放置原料
    if not  returnTable[1] then print("无法启动，需要配置足数的冷却单元"); return end;
    if not  returnTable[2] then print("无法启动，需要配置足数的燃料"); return end;
 end;
@@ -78,54 +79,54 @@ local function checkHe()
 
  
 
-     local hePull=reactorControl.checkReactorDamage(direction["reactor"]);--检查受损的冷却单元
+     local hePull=reactorControl.checkReactorDamage(transposer,direction["reactor"]);--检查受损的冷却单元
        
      
      if hePull then --说明有需要更换的，先停止反应仓
        
         redControl.stop(direction["reactor"]);
         os.sleep(1);--休眠一秒再取出来,核电仓收到信号不会立马关闭
-         local heSlot=chest.checkHeSlotIsEnough(direction["heChest"],hePull);
+         local heSlot=chest.checkHeSlotIsEnough(transposer,direction["heChest"],hePull);
            while not heSlot  do  
            print("箱子槽位不足,请取出物品");
-           heSlot=chest.checkHeSlotIsEnough(direction["heChest"],hePull);
+           heSlot=chest.checkHeSlotIsEnough(transposer,direction["heChest"],hePull);
            os.sleep(3);
            end;
-           reactorControl.pullUranAndHe(hePull,nil,direction["reactor"],direction["drainedUranChest"],direction["heChest"],heSlot,nil);
-           local he=chest.checkHasReplace(hePull,nil)[1];
+           reactorControl.pullUranAndHe(transposer,hePull,nil,direction["reactor"],direction["drainedUranChest"],direction["heChest"],heSlot,nil);
+           local he=chest.checkHasReplace(transposer,hePull,nil)[1];
            while not he do 
              print("冷却单元不足，请补充");
-             he=chest.checkHasReplace(hePull,nil)[1];
+             he=chest.checkHasReplace(transposer,hePull,nil)[1];
              os.sleep(3);
            end
-           reactorControl.putFuelAndHe(hePull,nil,direction["heChest"],direction["uranChest"],direction["reactor"],he,nil);
+           reactorControl.putFuelAndHe(transposer,hePull,nil,direction["heChest"],direction["uranChest"],direction["reactor"],he,nil);
      
         end;
 
 end;
 local function checkUran()
 
-       local uranPull=reactorControl.checkReactorFuelDrained(direction["reactor"]);
+       local uranPull=reactorControl.checkReactorFuelDrained(transposer,direction["reactor"]);
       if uranPull then 
        
         redControl.stop(direction["reactor"]);
         os.sleep(1);--休眠一秒再取出来,核电仓收到信号不会立马关闭
-         local uranSlot=chest.checkUranSlotIsEnough(direction["drainedUranChest"],uranPull);
+         local uranSlot=chest.checkUranSlotIsEnough(transposer,direction["drainedUranChest"],uranPull);
            while not uranSlot  do  
            print("箱子槽位不足,请取出物品");
-           uranSlot=chest.checkUranSlotIsEnough(direction["drainedUranChest"],uranPull);
+           uranSlot=chest.checkUranSlotIsEnough(transposer,direction["drainedUranChest"],uranPull);
            os.sleep(3);
            end;
-            reactorControl.pullUranAndHe(nil,uranPull,direction["reactor"],direction["drainedUranChest"],direction["heChest"],nil,uranSlot);
+            reactorControl.pullUranAndHe(transposer,nil,uranPull,direction["reactor"],direction["drainedUranChest"],direction["heChest"],nil,uranSlot);
            
-          local uran=chest.checkHasReplace(nil,uranPull)[2];
+          local uran=chest.checkHasReplace(transposer,nil,uranPull)[2];
      
            while not uran do 
              print("燃料不足，请补充");
-             uran=chest.checkHasReplace(nil,uranPull)[2];
+             uran=chest.checkHasReplace(transposer,nil,uranPull)[2];
              os.sleep(3);
            end
-           reactorControl.putFuelAndHe(nil,uranPull,direction["heChest"],direction["uranChest"],direction["reactor"],nil,uran);
+           reactorControl.putFuelAndHe(transposer,nil,uranPull,direction["heChest"],direction["uranChest"],direction["reactor"],nil,uran);
      
       end;
 end;
@@ -137,7 +138,7 @@ end;
      
     
      --检查是否满足配置
-    local isReady=reactorControl.checkReactor(direction["reactor"]);
+    local isReady=reactorControl.checkReactor(transposer,direction["reactor"]);
     local outSide=redControl.getOutSide(direction["outSideRed"]);
     if mode.gtBattery==1 then
    gtBatteryStart(outSide,isReady);
