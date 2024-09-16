@@ -23,6 +23,9 @@ local mode={
    capacity=0.85--到达多少电量停机
   
 }
+local  rconfig={
+     size=54--核电仓大小
+}
 local function load()
 
 
@@ -77,5 +80,6 @@ return {
   uraniumQuadrupleFuel=uraniumQuadrupleFuel,
   minecraftToRealTime=minecraftToRealTime,
   direction=direction,
-  mode=mode
+  mode=mode,
+  rconfig=rconfig
 }
