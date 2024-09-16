@@ -206,7 +206,7 @@ end
 local function controlReactor(transposer, id)
     print("核电仓 " .. id .. " 正在操作: 控制反应堆")
 
-       if stopSignal then
+    if stopSignal then
         print("接收到停机信号，核电仓 " .. id .. " 停止运行")
         redControl.stop(direction["reactor"])
         return
@@ -247,18 +247,31 @@ local function batchProcess()
             
             -- 判断是否进入批处理模式
             if heDamageRatio >= threshold or uranDamageRatio >= threshold then
-                print("核电仓 " .. id .. " 的冷却单元或燃料棒低于阈值")
-                print("停止核电仓 " .. id .. " 的操作")
+                batchMode = true
+                break
+            end
+        end
+
+        if batchMode then
+            print("批处理模式激活")
+            -- 关机，执行批处理
+            for id, _ in ipairs(transposers) do
                 redControl.stop(direction["reactor"])
-                -- 只处理低于阈值的冷却单元
-                if heDamageRatio >= threshold then
-                    print("处理冷却单元更换")
-                    checkHe(transposer, id)
-                end
-                if uranDamageRatio >= threshold then
-                    print("处理燃料棒更换")
-                    checkUran(transposer, id)
-                end
+            end
+            
+            -- 执行批处理操作
+            for id, transposer in ipairs(transposers) do
+                controlReactor(transposer, id)
+            end
+
+            -- 重新开机
+            for id, _ in ipairs(transposers) do
+                redControl.start(direction["reactor"])
+            end
+        else
+            -- 单独处理每个核电仓
+            for id, transposer in ipairs(transposers) do
+                controlReactor(transposer, id)
             end
         end
 
