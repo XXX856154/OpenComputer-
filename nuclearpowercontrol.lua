@@ -2,11 +2,15 @@ local thread = require("thread")
 local component = require("component")
 local redControl = require("redControl")
 local reactorControl = require("reactorControl")
-local config = require("reactorConfig")
 local chest = require("chestControl")
+local config = require("reactorConfig")
+local sides = require("sides")
 
 local direction = config.direction
 local mode = config.mode
+local rconfig = config.rconfig
+local heliumCoolantcell = config.heliumCoolantcell
+local uraniumQuadrupleFuel = config.uraniumQuadrupleFuel
 
 -- 获取所有转运器组件
 local transposers = {}
@@ -17,10 +21,41 @@ end
 -- 全局变量
 local coolingNeeded = false
 local stopSignal = false
-local heLock = false
-local fuelLock = false
 local running = true
 local threads = {}
+local reactorLocks = {}
+local heCheckInterval = 60  -- 基础冷却单元检查间隔（秒）
+local uranCheckInterval = 21600  -- 基础燃料棒检查间隔（秒）
+
+-- 为每个核电仓创建独立的锁
+for id, _ in ipairs(transposers) do
+    reactorLocks[id] = {
+        heLock = false,
+        fuelLock = false,
+        heLockThread = nil,
+        fuelLockThread = nil,
+        lastHeCheckTime = os.time(),
+        lastUranCheckTime = os.time(),
+        heCheckFrequency = heCheckInterval,
+        uranCheckFrequency = uranCheckInterval
+    }
+end
+
+local function updateCheckFrequency(id)
+    local lock = reactorLocks[id]
+    local elapsedHeTime = os.time() - lock.lastHeCheckTime
+    local elapsedUranTime = os.time() - lock.lastUranCheckTime
+
+    -- 动态调整冷却单元检查频率
+    local heDamageRatio = (heliumCoolantcell.damage - 1) / heliumCoolantcell.damage
+    local heLossRate = (1 - heDamageRatio) * 100
+    lock.heCheckFrequency = heCheckInterval / (1 + heLossRate * 0.1)
+
+    -- 动态调整燃料棒检查频率
+    local uranDamageRatio = (uraniumQuadrupleFuel.damage - 1) / uraniumQuadrupleFuel.damage
+    local uranLossRate = (1 - uranDamageRatio) * 100
+    lock.uranCheckFrequency = uranCheckInterval / (1 + uranLossRate * 0.1)
+end
 
 local function start(outSide, isReady, transposer, id)
     print("核电仓 " .. id .. " 正在操作: 启动或停止反应堆")
@@ -41,7 +76,6 @@ local function start(outSide, isReady, transposer, id)
     else
         print("核电仓 " .. id .. " 不满足配置，无法启动")
         redControl.stop(direction["reactor"])
-        
     end
 end
 
@@ -54,71 +88,101 @@ local function machineStart(outSide, isReady, transposer, id)
 end
 
 local function checkHe(transposer, id)
+    local lock = reactorLocks[id]
+    local currentTime = os.time()
+    local elapsedTime = currentTime - lock.lastHeCheckTime
+
+    if elapsedTime < lock.heCheckFrequency then
+        return
+    end
+
+    lock.lastHeCheckTime = currentTime
     print("核电仓 " .. id .. " 正在操作: 检查冷却单元")
+
     local hePull = reactorControl.checkReactorDamage(transposer, direction["reactor"])
     if hePull then
         print("核电仓 " .. id .. " 检测到受损的冷却单元")
-        coolingNeeded = true
         redControl.stop(direction["reactor"])
 
-        while heLock do
-            print("核电仓 " .. id .. " 在更换冷却单元时发现当前存在核电仓更换冷却单元中")
-            os.sleep(1)
+        if lock.heLock then
+            print("核电仓 " .. id .. " 当前存在冷却单元更换中")
+            return
         end
-        heLock = true
+        lock.heLock = true
 
-        local heSlot = chest.checkHeSlotIsEnough(transposer, direction["heChest"], hePull)
-        while not heSlot do
-            print("核电仓 " .. id .. " 箱子槽位不足，请取出物品")
-            heSlot = chest.checkHeSlotIsEnough(transposer, direction["heChest"], hePull)
-            os.sleep(3)
+        if lock.heLockThread then
+            lock.heLockThread:join()
         end
+        lock.heLockThread = thread.create(function()
+            local heSlot = chest.checkHeSlotIsEnough(transposer, direction["heChest"], hePull)
+            while not heSlot do
+                print("核电仓 " .. id .. " 箱子槽位不足，请取出物品")
+                heSlot = chest.checkHeSlotIsEnough(transposer, direction["heChest"], hePull)
+                os.sleep(3)
+            end
 
-        reactorControl.pullUranAndHe(transposer, hePull, nil, direction["reactor"], direction["drainedUranChest"], direction["heChest"], heSlot, nil)
-        local he = chest.checkHasReplace(transposer, hePull, nil)[1]
-        while not he do
-            print("核电仓 " .. id .. " 冷却单元不足，请补充")
-            he = chest.checkHasReplace(transposer, hePull, nil)[1]
-            os.sleep(3)
-        end
+            reactorControl.pullUranAndHe(transposer, hePull, nil, direction["reactor"], direction["drainedUranChest"], direction["heChest"], heSlot, nil)
+            local he = chest.checkHasReplace(transposer, hePull, nil)[1]
+            while not he do
+                print("核电仓 " .. id .. " 冷却单元不足，请补充")
+                he = chest.checkHasReplace(transposer, hePull, nil)[1]
+                os.sleep(3)
+            end
 
-        reactorControl.putFuelAndHe(transposer, hePull, nil, direction["heChest"], direction["uranChest"], direction["reactor"], he, nil)
-        coolingNeeded = false
-        heLock = false
-        print("核电仓 " .. id .. " 冷却单元更换完成")
+            reactorControl.putFuelAndHe(transposer, hePull, nil, direction["heChest"], direction["uranChest"], direction["reactor"], he, nil)
+            lock.heLock = false
+            print("核电仓 " .. id .. " 冷却单元更换完成")
+        end)
+        lock.heLockThread:detach()
     end
 end
 
 local function checkUran(transposer, id)
+    local lock = reactorLocks[id]
+    local currentTime = os.time()
+    local elapsedTime = currentTime - lock.lastUranCheckTime
+
+    if elapsedTime < lock.uranCheckFrequency then
+        return
+    end
+
+    lock.lastUranCheckTime = currentTime
     print("核电仓 " .. id .. " 正在操作: 检查燃料棒")
+
     local uranPull = reactorControl.checkReactorFuelDrained(transposer, direction["reactor"])
     if uranPull then
         print("核电仓 " .. id .. " 检测到燃料棒枯竭")
         redControl.stop(direction["reactor"])
 
-        while fuelLock do
-            print("核电仓 " .. id .. " 在更换燃料时发现当前存在核电仓更换燃料中")
-            os.sleep(1)
+        if lock.fuelLock then
+            print("核电仓 " .. id .. " 当前存在燃料更换中")
+            return
         end
-        fuelLock = true
+        lock.fuelLock = true
 
-        local uranSlot = chest.checkUranSlotIsEnough(transposer, direction["drainedUranChest"], uranPull)
-        while not uranSlot do
-            print("核电仓 " .. id .. " 箱子槽位不足，请取出物品")
-            uranSlot = chest.checkUranSlotIsEnough(transposer, direction["drainedUranChest"], uranPull)
-            os.sleep(3)
+        if lock.fuelLockThread then
+            lock.fuelLockThread:join()
         end
+        lock.fuelLockThread = thread.create(function()
+            local uranSlot = chest.checkUranSlotIsEnough(transposer, direction["drainedUranChest"], uranPull)
+            while not uranSlot do
+                print("核电仓 " .. id .. " 箱子槽位不足，请取出物品")
+                uranSlot = chest.checkUranSlotIsEnough(transposer, direction["drainedUranChest"], uranPull)
+                os.sleep(3)
+            end
 
-        reactorControl.pullUranAndHe(transposer, nil, uranPull, direction["reactor"], direction["drainedUranChest"], direction["heChest"], nil, uranSlot)
-        local uran = chest.checkHasReplace(transposer, nil, uranPull)[2]
-        while not uran do
-            print("核电仓 " .. id .. " 燃料不足，请补充")
-            uran = chest.checkHasReplace(transposer, nil, uranPull)[2]
-            os.sleep(3)
-        end
+            reactorControl.pullUranAndHe(transposer, nil, uranPull, direction["reactor"], direction["drainedUranChest"], direction["heChest"], nil, uranSlot)
+            local uran = chest.checkHasReplace(transposer, nil, uranPull)[2]
+            while not uran do
+                print("核电仓 " .. id .. " 燃料不足，请补充")
+                uran = chest.checkHasReplace(transposer, nil, uranPull)[2]
+                os.sleep(3)
+            end
 
-        reactorControl.putFuelAndHe(transposer, nil, uranPull, direction["heChest"], direction["uranChest"], direction["reactor"], nil, uran)
-        fuelLock = false
+            reactorControl.putFuelAndHe(transposer, nil, uranPull, direction["heChest"], direction["uranChest"], direction["reactor"], nil, uran)
+            lock.fuelLock = false
+        end)
+        lock.fuelLockThread:detach()
     end
 end
 
@@ -142,102 +206,78 @@ end
 local function controlReactor(transposer, id)
     print("核电仓 " .. id .. " 正在操作: 控制反应堆")
 
-    if stopSignal then
-        print("核电仓 " .. id .. " 接受到外部信号，关闭所有线程")
+       if stopSignal then
+        print("接收到停机信号，核电仓 " .. id .. " 停止运行")
+        redControl.stop(direction["reactor"])
         return
     end
 
-    local isReady = reactorControl.checkReactor(transposer, direction["reactor"])
-    local outSide = redControl.getOutSide(direction["outSideRed"])
+    -- 初始化反应堆
+    local isReady = initializeReactor(transposer, id)
+    if not isReady then
+        print("核电仓 " .. id .. " 初始化失败")
+        return
+    end
 
-    if mode.gtBattery == 1 then
+    -- 启动反应堆
+    local outSide = component.redstone.getInput(direction["outSideRed"])
+    if mode.gtBattery then
         gtBatteryStart(outSide, isReady, transposer, id)
-    elseif mode.gtMachine == 1 then
+    elseif mode.gtMachine then
         machineStart(outSide, isReady, transposer, id)
-    else
-        start(outSide, isReady, transposer, id)
     end
+
+    -- 进行检查
+    updateCheckFrequency(id)
+    checkHe(transposer, id)
+    checkUran(transposer, id)
 end
 
--- 主线程负责输出电量和时间
-local function mainThread()
-    local startTime = os.time()
+-- 批处理模式管理
+local function batchProcess()
     while running do
-        if stopSignal then
-            print("接收到外部信号，关闭主线程")
-            running = false
-            return
-        end
-        local executionTime = os.time()
-        local totalTime = executionTime - startTime
-        print("系统已运行时间: " .. config.minecraftToRealTime(totalTime))
+        local threshold = 0.75 -- 设置冷却单元和燃料棒的阈值百分比
+        local batchMode = false
 
-        local gtBatteryMaxEU, gtStoredEU, gtMachineMaxEU, gtStoredEU
-        if mode.gtBattery == 1 then
-            local gtBattery = component.gt_batterybuffer
-            gtBatteryMaxEU = gtBattery.getMaxBatteryCharge(1) * mode.batterySize + gtBattery.getEUCapacity()
-            gtStoredEU = gtBattery.getBatteryCharge(1) * mode.batterySize + gtBattery.getEUStored()
-        elseif mode.gtMachine == 1 then
-            local gtMachine = component.gt_machine
-            gtMachineMaxEU = gtMachine.getEUMaxStored()
-            gtStoredEU = gtMachine.getEUStored()
-        end
-
+        -- 检查所有核电仓的冷却单元和燃料棒状态
         for id, transposer in ipairs(transposers) do
-            if mode.gtBattery == 1 then
-                print("核电仓 " .. id .. " 可存储电量为: " .. gtBatteryMaxEU)
-                print(string.format("核电仓 " .. id .. " 当前电量: %.2f%%", gtStoredEU / gtBatteryMaxEU * 100))
-            elseif mode.gtMachine == 1 then
-                print("核电仓 " .. id .. " 可存储电量为: " .. gtMachineMaxEU)
-                print(string.format("核电仓 " .. id .. " 当前电量: %.2f%%", gtStoredEU / gtMachineMaxEU * 100))
+            local lock = reactorLocks[id]
+            local heDamageRatio = (heliumCoolantcell.damage - 1) / heliumCoolantcell.damage
+            local uranDamageRatio = (uraniumQuadrupleFuel.damage - 1) / uraniumQuadrupleFuel.damage
+            
+            -- 判断是否进入批处理模式
+            if heDamageRatio >= threshold or uranDamageRatio >= threshold then
+                print("核电仓 " .. id .. " 的冷却单元或燃料棒低于阈值")
+                print("停止核电仓 " .. id .. " 的操作")
+                redControl.stop(direction["reactor"])
+                -- 只处理低于阈值的冷却单元
+                if heDamageRatio >= threshold then
+                    print("处理冷却单元更换")
+                    checkHe(transposer, id)
+                end
+                if uranDamageRatio >= threshold then
+                    print("处理燃料棒更换")
+                    checkUran(transposer, id)
+                end
             end
         end
 
-        os.sleep(1)
+        -- 定时休息，避免高频率的操作
+        os.sleep(10)
     end
 end
 
--- 为每个转运器创建并启动一个线程
-for id, transposer in ipairs(transposers) do
-    if initializeReactor(transposer, id) then
-        local controlThread = thread.create(function()
-            while running do
-                if stopSignal then
-                    print("核电仓 " .. id .. " 接收到外部信号，关闭线程")
-                    return
-                end
-
-                checkHe(transposer, id)
-                checkUran(transposer, id)
-
-                local outSide = redControl.getOutSide(direction["outSideRed"])
-                if outSide == 0 then
-                    stopSignal = true
-                    print("核电仓 " .. id .. " 接收到外部红石信号，关闭所有线程并退出程序")
-                    redControl.stop(direction["reactor"])
-                    running = false
-                    return
-                end
-
-                controlReactor(transposer, id)
-                os.sleep(0.1)  -- 确保线程让出控制权
-            end
-        end)
-
-        controlThread:detach()
-        table.insert(threads, controlThread)
-    end
+-- 启动批处理线程
+local function startBatchProcessing()
+    local batchThread = thread.create(batchProcess)
+    batchThread:detach()
 end
 
--- 启动主线程
-local mainThreadInstance = thread.create(mainThread)
-mainThreadInstance:detach()
-table.insert(threads, mainThreadInstance)
-
--- 等待所有线程结束
-for _, t in ipairs(threads) do
-    t:join()
+-- 主程序入口
+local function main()
+    print("系统启动中...")
+    startBatchProcessing()
 end
 
-print("所有线程已停止")
-
+-- 执行主程序
+main()
