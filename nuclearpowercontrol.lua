@@ -206,7 +206,7 @@ end
 local function controlReactor(transposer, id)
     print("核电仓 " .. id .. " 正在操作: 控制反应堆")
 
-    if stopSignal then
+   if stopSignal then
         print("接收到停机信号，核电仓 " .. id .. " 停止运行")
         redControl.stop(direction["reactor"])
         return
@@ -236,7 +236,7 @@ end
 -- 批处理模式管理
 local function batchProcess()
     while running do
-        local threshold = 0.75 -- 设置冷却单元和燃料棒的阈值百分比
+        local threshold = config.heliumCoolantcell.damage-- 设置冷却单元和燃料棒的阈值百分比
         local batchMode = false
 
         -- 检查所有核电仓的冷却单元和燃料棒状态
