@@ -218,12 +218,17 @@ local function checkDamageHe(transposer,id, hePull)
             end
             while not he do
                 print("核电仓 " .. id .. " 冷却单元不足，请补充")
-               reactorControl.manageCoolantCells(transposer, direction["heChest"], direction["reactor"],direction["heChest"], heliumCoolantcell.damage-10)
-                  if  reactorControl.checkReactor(transposer, direction["reactor"]) then break; end
-                 delayTime=delayTime+4000--延迟释放锁的时间
-  
-                os.sleep(3)
               
+                      local isReady=reactorControl.checkReactor(transposer, direction["reactor"])
+                     print("是否准备就绪:"..tostring(isReady));
+                    reactorControl.manageCoolantCells(transposer, direction["heChest"], direction["reactor"],direction["heChest"], heliumCoolantcell.damage-10)
+                   if  isReady then
+                    break; 
+                    end
+                 delayTime=delayTime+4000--延迟释放锁的时间
+                hePull=nil;
+                os.sleep(5)
+               
             end
                  reactorControl.pullUranAndHe(transposer, hePull, nil, direction["reactor"], direction["drainedUranChest"], direction["heChest"], heSlot, nil)
             -- 再次输出调试信息，确保能追踪到问题点
@@ -253,6 +258,7 @@ local function batchProcess(id)
     log("线程" .. id .. "开始批处理操作")
     if #reactorLocks ==1 then 
        print("核电数量太少，无需批处理");
+       return
        end
     if timeoutThread and timeoutThread:isRunning() then
         print("批处理已在进行中")
