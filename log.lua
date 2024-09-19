@@ -3,7 +3,7 @@ local Log = {}
 -- 定义日志缓存和写入阈值
 Log.cache = {}
 Log.flushLimit = 100 -- 每100条日志写入一次
-Log.filepath = "nuclear_log.txt"
+Log.filepath = "/mnt/0f2/nuclear_log.txt"
 Log.maxFileSize = 1024 * 1024 -- 1MB
 
 -- 检查并轮换日志文件
@@ -18,20 +18,30 @@ function Log:rotate()
     end
 end
 
+-- 删除并重新生成日志文件
+function Log:resetLogFile()
+    local file = io.open(self.filepath, "r")
+    if file then
+        file:close()
+        os.remove(self.filepath)
+    end
+    local newFile, err = io.open(self.filepath, "w")
+    if not newFile then
+        print("Error creating new log file: " .. (err or "unknown error"))
+    else
+        newFile:close()
+       
+    end
+end
+
 function Log:append(message)
     -- 确保 cache 被初始化
     if type(self.cache) ~= "table" then
         self.cache = {}
     end
 
-    -- 调试信息
-    print("Debug: cache = ", self.cache, " type = ", type(self.cache))
-    print("Debug: cache length = ", #self.cache)
-    
     local timestamp = os.date("%Y-%m-%d %H:%M:%S")
     local logEntry = tostring(timestamp) .. " - " .. tostring(message)
-    print("Debug: logEntry = ", logEntry, " type = ", type(logEntry))
-    
     table.insert(self.cache, logEntry)
     
     -- 当缓存的日志数量超过 flushLimit 时，写入文件
@@ -58,7 +68,7 @@ end
 
 -- 测试文件创建
 local function testFileCreation()
-    local file, err = io.open("test_log.txt", "w")
+    local file, err = io.open("/mnt/0f2/test_log.txt", "w")
     if not file then
         print("Error creating test file: " .. (err or "unknown error"))
     else
@@ -68,6 +78,7 @@ local function testFileCreation()
     end
 end
 
-testFileCreation()
+-- 重置日志文件
+Log:resetLogFile()
 
 return Log
