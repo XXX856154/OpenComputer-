@@ -35,29 +35,27 @@ hash[he]=heSlotHash;
 hash[uranium]=uranSlotHash
 
 --检查核电仓是否满足配置
-------
-local function checkReactor(transposer,side)
-   local uranNam=uraniumQuadrupleFuel.count;
-   local heliumNam=heliumCoolantcell.count;
 
+local function checkReactor(transposer, side)
+    -- 确保 uraniumQuadrupleFuel 和 heliumCoolantcell 已定义
+    local uranNam = uraniumQuadrupleFuel.count
+    local heliumNam = heliumCoolantcell.count
 
-   for i=1,size do
-    local item=transposer.getStackInSlot(side,i)
-      
-     if  item then
+    for i = 1, size do
+        local item = transposer.getStackInSlot(side, i)
         
-           if not hash[item.name] or item.damage >=hash[item.name][i].damage then 
-                return false;
-           end
-     else 
-        return false;
-      end;
+        if not item then
+            return false
+        end
+        
+        if not hash[item.name] or item.damage >= hash[item.name][i].damage then
+            return false
+        end
     end
-   return true;
-   
-              
- end;  
-------
+    return true
+end
+
+
 --检查核电仓冷却剂的损坏程度
 local function checkReactorDamage(transposer,side)
 
