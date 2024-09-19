@@ -11,7 +11,7 @@ local heliumCoolantcell =config.heliumCoolantcell;--冷却单元配置
 local size=config.rconfig.size --核电仓的大小
 local he=heliumCoolantcell.name;--冷却单元名字
 local uranium=uraniumQuadrupleFuel.name;--燃料名字
-
+local Log=require("log")
 --初始化
 local function init()
 
@@ -112,7 +112,7 @@ local function checkReactorFuelDrained(transposer,side)
 
 local function pullUranAndHe(transposer,hePull,uranPull,reactorSide,uranDrainedChestSide,heChestSide,hePutSlot,uranPutSlot)
    if not reactorSide or  not uranDrainedChestSide or not heChestSide then
-    print("该函数需要反应堆方向，枯竭燃料箱方向，冷却剂箱方向");
+    Log.append("该函数需要反应堆方向，枯竭燃料箱方向，冷却剂箱方向");
     return ;
     end;
   
@@ -127,9 +127,9 @@ local function pullUranAndHe(transposer,hePull,uranPull,reactorSide,uranDrainedC
 
   local index=1;--箱子槽位索引
   local slotSize=0;--箱子槽位可放置的数量;
-  if not uranPutSlot then print("箱子槽位不足,无法放置"); return;end;
+  if not uranPutSlot then  Log.append("箱子槽位不足,无法放置"); return;end;
    
-   print("取出枯竭燃料中,枯竭燃料棒:"..uranSize);
+    Log.append("取出枯竭燃料中,枯竭燃料棒:"..uranSize);
    for key,value in pairs(uranPull) do
      
       slotSize=uranPutSlot[index];--获取当前槽位能够放置的数量
@@ -149,14 +149,14 @@ local function pullUranAndHe(transposer,hePull,uranPull,reactorSide,uranDrainedC
          end;
        end;
     end;
-    else print("没有枯竭燃料棒，无需取出");
+    else  Log.append("没有枯竭燃料棒，无需取出");
   end;
 
   if hePull then 
 -- 取出冷却单元
     
     local heSize=0;
-    if not hePutSlot then print("冷却单元箱子槽位不足，无法放置"); return ;end ;
+    if not hePutSlot then  Log.append("冷却单元箱子槽位不足，无法放置"); return ;end ;
    --需要取出的数量
      for key,value in pairs(hePull) do 
       heSize=heSize+value.size;
@@ -165,7 +165,7 @@ local function pullUranAndHe(transposer,hePull,uranPull,reactorSide,uranDrainedC
      slotSize=0;
 
 
-    print("即将损坏的冷却单元:"..heSize);
+     Log.append("即将损坏的冷却单元:"..heSize);
      --冷却单元开始取出
    
       for key,value in pairs(hePull)do 
@@ -186,7 +186,7 @@ local function pullUranAndHe(transposer,hePull,uranPull,reactorSide,uranDrainedC
                    end;
             end;
        end;
-    else print("没有即将损坏的冷却单元，无需取出");
+    else  Log.append("没有即将损坏的冷却单元，无需取出");
     end;
  end;
 
@@ -242,7 +242,7 @@ local function firstPut(transposer,heSide,uranSide,reactorSide)
    local returnTable={false,false};
    if heCheck then 
      
-     print("核电仓执行，放入冷却单元中");
+      Log.append("核电仓执行，放入冷却单元中");
    
       for key,value in pairs(heHash) do  
            
@@ -263,7 +263,7 @@ local function firstPut(transposer,heSide,uranSide,reactorSide)
      end ;
  
     if uranCheck then  
-          print("核电仓执行，放入燃料棒中");
+          Log.append("核电仓执行，放入燃料棒中");
      for key,value in pairs(uranHash) do 
           for k,v in pairs(uranCheck) do 
     
@@ -307,7 +307,7 @@ local function manageCoolantCells(transposer, heSide, reactorSide, chestSide, da
     for _, value in ipairs(hePull) do
         local success = transposer.transferItem(reactorSide, heSide, value.size, value.slot)
         if success and success > 0 then
-            print("取出损耗超过阈值的冷却单元: 槽位 " .. value.slot)
+            Log.append("取出损耗超过阈值的冷却单元: 槽位 " .. value.slot)
         end
     end
    
@@ -316,7 +316,7 @@ local function manageCoolantCells(transposer, heSide, reactorSide, chestSide, da
         -- 你的代码
     end
 else
-    print("hash[he] is nil")
+     Log.append("hash[he] is nil")
 end
     -- 放入满足条件的冷却单元
     for key, _ in pairs(hash[he]) do
@@ -326,7 +326,7 @@ end
             if  stack.name == he  and stack.damage < damage then
                 local success = transposer.transferItem(heSide, reactorSide, stack.size, i, key)
                 if success and success > 0 then
-                    print("放入满足条件的冷却单元: 槽位 " .. key)
+                     Log.append("放入满足条件的冷却单元: 槽位 " .. key)
                     break -- 优化，减少执行的次数
                 end
             end
