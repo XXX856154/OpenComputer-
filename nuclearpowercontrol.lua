@@ -237,10 +237,11 @@ local function checkDamageHe(transposer,id, hePull)
                     
                     reactorControl.manageCoolantCells(transposer, direction["heChest"], direction["reactor"],direction["heChest"], heliumCoolantcell.damage-10)
                    if  isReady then
+                      hePull=nil;
                     break; 
                     end
                  delayTime=delayTime+4000--延迟释放锁的时间
-                hePull=nil;
+                
                 os.sleep(5)
                
             end
