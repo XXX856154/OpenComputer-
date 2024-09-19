@@ -29,7 +29,7 @@ local uranCheckInterval = 12800  -- 基础燃料棒检查间隔（秒）
 local gtBattery={};
 local gtMachine={};
 local timeoutThread = nil  -- 用于保存超时线程的全局变量
-local lockTimeout = 3000    -- 超时时间
+local lockTimeout = 3000   -- 超时时间
 local delayTime = 0 --延迟持有锁时长
 -- 为每个核电仓创建独立的锁
 for id, transposer in ipairs(transposers) do
@@ -308,13 +308,19 @@ local function batchProcess(id)
 
             if state ~= "OK" then
                 local hePull = reactorControl.checkReactorDamage(transposer, direction["reactor"])
+       
                 checkDamageHe(transposer, i, hePull)  
+
                 reactorLocks[id].state = "OK"
+         
+                 delayTime=delayTime+4000
             end
+
         end
 
         redControl.start(direction["reactor"])
         lock:release()
+        delayTime=0
         print("批处理模式完毕")
         log("批处理模式完毕")
         log("锁已释放")
