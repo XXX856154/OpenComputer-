@@ -563,11 +563,11 @@ local function threadFunction(id, transposer)
             os.sleep(1)
         end
 
-        Log:append("线程 " .. id .. " 结束")
+        
     end)
 
     if not status then
-        Log:append("线程 " .. id .. " 错误: ")
+        Log:append("线程 " .. id .. " 结束")
     end
 end
 
