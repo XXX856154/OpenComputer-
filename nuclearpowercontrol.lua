@@ -52,9 +52,9 @@ end
 local  storedEU=0;
 local maxEU=0;
 if mode.gtBattery==1 then 
-  gtBattery=component.gtbatterybuffer;
-   storedEU = gtBattery.getBatteryCharge(1) * mode.batterySize + gtBattery.getEUStored()
-   maxEU = gtBattery.getBatteryCapacity(1) * mode.batterySize + gtBattery.getEUCapacity()
+  gtBattery=component.gt_batterybuffer;
+   storedEU=gtBattery.getBatteryCharge(1) * mode.batterySize + gtBattery.getEUStored()
+   maxEU = gtBattery.getMaxBatteryCharge(1) * mode.batterySize + gtBattery.getEUCapacity()
 elseif mode.gtMachine==1  then
  
  gtMachine=component.gt_machine;
@@ -507,10 +507,10 @@ local function printStatus()
 
     -- 获取电池信息
     if mode.gtBattery ==1then
-        gtStoredEU = gtBattery.getBatteryCharge(1) * mode.batterySize + gtBattery.getEUStored()
-        gtBatteryMaxEU = gtBattery.getBatteryCapacity(1) * mode.batterySize + gtBattery.getEUCapacity()
-        percent = gtStoredEU / gtBatteryMaxEU * 100
-        print("电池电量: " .. gtStoredEU .. " / " .. gtBatteryMaxEU)
+        storedEU = gtBattery.getBatteryCharge(1) * mode.batterySize + gtBattery.getEUStored()
+        
+        percent = storedEU / maxEU * 100
+        print("电池电量: " .. storedEU .. " / " .. maxEU)
         print(string.format("当前电量: %.2f%%", percent))
     elseif mode.gtMachine ==1then
         gtStoredEU = gtMachine.getEUStored()
