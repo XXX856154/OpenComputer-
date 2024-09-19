@@ -5,7 +5,7 @@ local uran=config.uraniumQuadrupleFuel.name;
 local he=config.heliumCoolantcell.name;
 local drainedName=config.uraniumQuadrupleFuel.changeName
 local direction=config.direction;
-
+local Log=require("log")
 -- 检查第一次启动燃料是否充足
 local function checkUran(transposer)
     local size = transposer.getInventorySize(direction["uranChest"])
@@ -72,7 +72,7 @@ local function checkUranSlotIsEnough(transposer, chestSide, uranPull)
         end
     end
 
-    print("枯竭燃料箱子空间不足")
+    Log:append("枯竭燃料箱子空间不足")
     return nil
 end
 
@@ -104,7 +104,7 @@ local function checkHeSlotIsEnough(transposer, chestSide, hePull)
         end
     end
 
-    print("冷却单元存放位置不足")
+    Log:append("冷却单元存放位置不足")
     return nil
 end
 
@@ -116,7 +116,7 @@ local function checkHasReplace(transposer, hePull, uranPull)
     local uranium = nil
 
     if hePull then
-        print("正在查看是否有足够的冷却单元")
+         Log:append("正在查看是否有足够的冷却单元")
         for key, value in pairs(hePull) do
             heRequire = heRequire + value.size
         end
@@ -138,7 +138,7 @@ local function checkHasReplace(transposer, hePull, uranPull)
             helium = nil
         end
     else
-        print("冷却单元尚能工作，无需检查冷却单元")
+         Log:append("冷却单元尚能工作，无需检查冷却单元")
     end
 
     if uranPull then
@@ -159,7 +159,7 @@ local function checkHasReplace(transposer, hePull, uranPull)
             end
         end
     else
-        print("燃料棒未枯竭，无需检查燃料棒")
+         Log:append("燃料棒未枯竭，无需检查燃料棒")
     end
 
     if uranRequire > 0 then
