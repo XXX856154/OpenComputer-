@@ -180,7 +180,7 @@ end
         stopSignal = true
         os.exit()
     elseif storedEU>=maxEU*mode.capacity then
-          print("当前电路充足，暂停关机");
+          Log:append("当前电路充足，暂停关机");
           redControl.stop(direction["reactor"])
     else
           Log:append("存在核电仓不满足配置，无法启动")
@@ -549,7 +549,7 @@ local function threadFunction(id, transposer)
                 machineStart(outSide, transposer, id)
             end
 
-            if os.time() % 10 == 0 then
+            if os.time() % 3== 0 then
                 printStatus()
             end
 
@@ -559,7 +559,7 @@ local function threadFunction(id, transposer)
                 running = false
                 break
             end
-
+            start(outSide,transposer, id)
             os.sleep(1)
         end
 
