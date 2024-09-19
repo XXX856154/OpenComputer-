@@ -3,7 +3,7 @@ local Log = {}
 -- 定义日志缓存和写入阈值
 Log.cache = {}
 Log.flushLimit = 100 -- 每100条日志写入一次
-Log.filepath = "/mnt/0f2/nuclear_log.txt"
+Log.filepath = "./nuclear_log.txt"
 Log.maxFileSize = 1024 * 1024 -- 1MB
 
 -- 检查并轮换日志文件
