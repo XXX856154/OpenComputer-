@@ -230,19 +230,23 @@ local function checkDamageHe(transposer,id, hePull)
             if not he then
                   Log:append("核电仓 " .. id .. " 缺少冷却单元")
             end
+             
+       
             while not he do
                   Log:append("核电仓 " .. id .. " 冷却单元不足，请补充")
-              
-                      local isReady=reactorControl.checkReactor(transposer, direction["reactor"])
                     
-                    reactorControl.manageCoolantCells(transposer, direction["heChest"], direction["reactor"],direction["heChest"], heliumCoolantcell.damage-10)
-                   if  isReady then
-                      hePull=nil;
+                      local isReady=reactorControl.checkReactor(transposer, direction["reactor"])
+                       if  isReady then
+                     
+                       hePull=nil;
                     break; 
                     end
+                    reactorControl.manageCoolantCells(transposer, direction["heChest"], direction["reactor"],direction["heChest"], heliumCoolantcell.damage-10)
+                   
+                 
                  delayTime=delayTime+4000--延迟释放锁的时间
-                
-                os.sleep(5)
+       
+            
                
             end
                  reactorControl.pullUranAndHe(transposer, hePull, nil, direction["reactor"], direction["drainedUranChest"], direction["heChest"], heSlot, nil)
@@ -371,7 +375,7 @@ local function checkHe(transposer, id)
     if hePull  then
         for i, he in pairs(hePull) do
             if he.damage >= heliumCoolantcell.damage then
-                 coolingNeeded = true  -- 使用局部变量
+                 coolingNeeded = true 
                  
                 local status, err = pcall(function()
                     checkDamageHe(transposer, id, hePull)
@@ -394,7 +398,7 @@ local function checkHe(transposer, id)
                  break
             else if he.damage+10>= heliumCoolantcell.damage  then
                 reactorLocks[id].state = "EXCEEDED_10"
-               break;
+                break
              end
             end
         end
