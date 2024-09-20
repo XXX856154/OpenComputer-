@@ -24,15 +24,15 @@ local stopSignal = false
 local running = true
 local threads = {}
 local reactorLocks = {}
-local heCheckInterval = 60  -- 基础冷却单元检查间隔（秒）
-local uranCheckInterval = 12800  -- 基础燃料棒检查间隔（秒）
+local heCheckInterval = 50  -- 基础冷却单元检查间隔
+local uranCheckInterval = 7200 -- 基础燃料棒检查间隔
 local gtBattery={};
 local gtMachine={};
 local timeoutThread = nil  -- 用于保存超时线程的全局变量
 local lockTimeout = 3000   -- 超时时间
 local delayTime = 0 --延迟持有锁时长
 local logFile = "./nuclear_reactor_log.txt"
-local maxLogEntries = 10000--最大日志条数
+
 -- 为每个核电仓创建独立的锁
 for id, transposer in ipairs(transposers) do
     reactorLocks[id] = {
@@ -322,7 +322,7 @@ local function batchProcess(id)
         for i, check in ipairs(reactorLocks) do
             local transposer = check.transposer
             local state = check.state
-         
+             
              Log:append("当前线程" .. id .. "正在执行批处理操作")
 
             if state ~= "OK" then
@@ -337,7 +337,7 @@ local function batchProcess(id)
 
         end
 
-        redControl.start(direction["reactor"])
+             
         lock:release()
         delayTime=0
          Log:append("批处理模式完毕")
@@ -377,7 +377,8 @@ local function checkHe(transposer, id)
             if he.damage >= heliumCoolantcell.damage then
                  coolingNeeded = true 
                  
-                local status, err = pcall(function()
+                local status, err = pcall(function() 
+                     reactorLocks[id].isReady=false;
                     checkDamageHe(transposer, id, hePull)
                 end)
                 if not status then
@@ -385,7 +386,7 @@ local function checkHe(transposer, id)
                 else
                     reactorLocks[id].state = "OK"
                 end
-                reactorLocks[id].isReady=false;
+               
                 local batchStatus, batchErr = pcall(function()
                     batchProcess(id)  -- 批处理操作
                 end)
@@ -440,17 +441,24 @@ local function checkUran(transposer, id)
                 uranSlot = chest.checkUranSlotIsEnough(transposer, direction["drainedUranChest"], uranPull)
                 os.sleep(3)
             end
-
+         
             reactorControl.pullUranAndHe(transposer, nil, uranPull, direction["reactor"], direction["drainedUranChest"], direction["heChest"], nil, uranSlot)
-            local uran = chest.checkHasReplace(transposer, nil, uranPull)[2]
+       
+           local uran = chest.checkHasReplace(transposer, nil, uranPull)[2]
             while not uran do
                   Log:append("核电仓 " .. id .. " 燃料不足，请补充")
                 uran = chest.checkHasReplace(transposer, nil, uranPull)[2]
                 os.sleep(3)
             end
-
-            reactorControl.putFuelAndHe(transposer, nil, uranPull, direction["heChest"], direction["uranChest"], direction["reactor"], nil, uran)
-            lock.fuelLock = false
+             local status, err = pcall(function()
+     reactorControl.putFuelAndHe(transposer, nil, uranPull, direction["heChest"], direction["uranChest"], direction["reactor"], nil, uran)
+end)
+if not status then
+    print("发生错误: " .. err)
+end
+           
+           
+             lock.fuelLock = false
         end)
         lock.fuelLockThread:detach()
     end
