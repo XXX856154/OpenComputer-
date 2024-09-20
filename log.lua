@@ -5,6 +5,7 @@ Log.cache = {}
 Log.flushLimit = 100 -- 每100条日志写入一次
 Log.filepath = "./nuclear_log.txt"
 Log.maxFileSize = 1024 * 1024 -- 1MB
+Log.maxLines = 1000 -- 最大日志行数
 
 -- 检查并轮换日志文件
 function Log:rotate()
@@ -30,8 +31,19 @@ function Log:resetLogFile()
         print("Error creating new log file: " .. (err or "unknown error"))
     else
         newFile:close()
-       
     end
+end
+
+-- 检查日志文件行数
+function Log:checkLineCount()
+    local file = io.open(self.filepath, "r")
+    if not file then return 0 end
+    local count = 0
+    for _ in file:lines() do
+        count = count + 1
+    end
+    file:close()
+    return count
 end
 
 function Log:append(message)
@@ -53,6 +65,10 @@ end
 -- 将缓存中的日志写入文件
 function Log:flush()
     self:rotate() -- 检查并轮换日志文件
+    local lineCount = self:checkLineCount()
+    if lineCount >= self.maxLines then
+        self:resetLogFile()
+    end
     local file, err = io.open(self.filepath, "a")
     if not file then
         print("Error opening file for appending: " .. (err or "unknown error"))
