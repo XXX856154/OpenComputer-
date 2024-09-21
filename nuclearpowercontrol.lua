@@ -397,9 +397,9 @@ local function checkHe(transposer, id)
                 coolingNeeded = false
                  reactorLocks[id].isReady=true;
                  break
-            else if he.damage+10>= heliumCoolantcell.damage  then
+            else if he.damage+5+#reactorLocks>= heliumCoolantcell.damage  then
                 reactorLocks[id].state = "EXCEEDED_10"
-                break
+             
              end
             end
         end
@@ -553,8 +553,19 @@ local function threadFunction(id, transposer)
 
         while running do
             updateCheckFrequency(id)
-            checkHe(transposer, id)
-            checkUran(transposer, id)
+            local status, err = pcall(function()
+        checkHe(transposer, id)
+    end)
+    if not status then
+        print("Error in checkHe: " .. err)
+    end
+
+    status, err = pcall(function()
+        checkUran(transposer, id)
+    end)
+    if not status then
+        print("Error in checkUran: " .. err)
+    end
             local outSide = component.redstone.getInput(direction["outSideRed"])
             if mode.gtBattery == 1 then
                 gtBatteryStart(outSide, transposer, id)
