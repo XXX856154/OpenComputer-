@@ -16,6 +16,11 @@ JSON.json为JSON库
 转运器上面为存放枯竭燃料棒箱子位置
 转运器左边为存放燃料棒箱子位置 
 转运器北面为核电仓。
+方向参数为 
+sides.west（西边）
+sides.east（东边）
+sides.north（北边）
+sides.south（南边）
 
 摆放完毕后，启动nuclearpowercontrol文件(记得在红石i/o端口上面放个拉杆输入红石信号);
 
