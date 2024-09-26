@@ -23,7 +23,11 @@ JSON.json为JSON库
 如果要控制单核，推荐使用可选择存储模式那一版
 程序会生成一个日志文件，有什么问题可以去看
 由于存在日志文件，请使用好点的数据磁盘，挂在到/home目录下
-指令为 \n
-df -f 查看磁盘的序号 \n
-label -a  磁盘序号  datadisk（自命名） \n
-/mount datadisk /home  挂载磁盘到home目录下\n
+指令为 
+
+df -f 查看磁盘的序号 
+
+label -a  磁盘序号  datadisk（自命名） 
+
+/mount datadisk /home  挂载磁盘到home目录下
+
