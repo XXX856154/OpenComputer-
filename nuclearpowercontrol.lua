@@ -29,7 +29,7 @@ local uranCheckInterval = 7200 -- 基础燃料棒检查间隔
 local gtBattery={};
 local gtMachine={};
 local timeoutThread = nil  -- 用于保存超时线程的全局变量
-local lockTimeout = 3000   -- 超时时间
+local lockTimeout = 1200   -- 超时时间
 local delayTime = 0 --延迟持有锁时长
 local logFile = "./nuclear_reactor_log.txt"
 
@@ -332,14 +332,14 @@ local function batchProcess(id)
 
                 reactorLocks[id].state = "OK"
          
-                 delayTime=delayTime+4000
+                 delayTime=delayTime+1000
             end
+          
 
         end
 
-             
+       delayTime=0
         lock:release()
-        delayTime=0
          Log:append("批处理模式完毕")
         log("批处理模式完毕")
         log("锁已释放")
@@ -397,7 +397,7 @@ local function checkHe(transposer, id)
                 coolingNeeded = false
                  reactorLocks[id].isReady=true;
                  break
-            else if he.damage+5+#reactorLocks>= heliumCoolantcell.damage  then
+            else if he.damage+5>= heliumCoolantcell.damage  then
                 reactorLocks[id].state = "EXCEEDED_10"
              
              end
@@ -526,10 +526,10 @@ local function printStatus()
         print("电池电量: " .. storedEU .. " / " .. maxEU)
         print(string.format("当前电量: %.2f%%", percent))
     elseif mode.gtMachine ==1then
-        gtStoredEU = gtMachine.getEUStored()
+        storedEU = gtMachine.getEUStored()
         gtMachineMaxEU = gtMachine.getEUCapacity()
-        percent = gtStoredEU / gtMachineMaxEU * 100
-        print("机器电量: " .. gtStoredEU .. " / " .. gtMachineMaxEU)
+        percent = storedEU / gtMachineMaxEU * 100
+        print("机器电量: " .. storedEU .. " / " .. gtMachineMaxEU)
         print(string.format("当前电量: %.2f%%", percent))
     end
 
