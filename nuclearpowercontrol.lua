@@ -12,6 +12,7 @@ local rconfig = config.rconfig
 local heliumCoolantcell = config.heliumCoolantcell
 local uraniumQuadrupleFuel = config.uraniumQuadrupleFuel
 local startTime=os.time();
+local batchProcessId;
 -- 获取所有转运器组件
 local transposers = {}
 for address, _ in component.list("transposer") do
@@ -31,7 +32,7 @@ local gtMachine={};
 local timeoutThread = nil  -- 用于保存超时线程的全局变量
 local lockTimeout = 1200   -- 超时时间
 local delayTime = 0 --延迟持有锁时长
-local logFile = "./nuclear_reactor_log.txt"
+--local logFile = "./nuclear_reactor_log.txt"
 
 -- 为每个核电仓创建独立的锁
 for id, transposer in ipairs(transposers) do
@@ -83,20 +84,20 @@ function Lock:acquire(timeout)
     local startTime = os.time()
     while self.locked do
         if timeout and os.time() - startTime > timeout then
-            log("错误: 锁获取超时")
+           -- log("错误: 锁获取超时")
             return false
         end
         os.sleep(0.1)
     end
     self.locked = true
-    log("锁被获取")
+   -- log("锁被获取")
     return true
 end
 
 
 function Lock:release()
     self.locked = false
-    log("锁被释放")
+    --log("锁被释放")
 end
 
 -- 定义 Thread 类
@@ -196,6 +197,8 @@ local function machineStart(outSide,transposer, id)
     start(outSide,transposer, id)
 end
 local function checkDamageHe(transposer,id, hePull)
+     
+   
     local lock = reactorLocks[id]
     redControl.stop(direction["reactor"])
 
@@ -211,7 +214,7 @@ local function checkDamageHe(transposer,id, hePull)
 
     lock.heLockThread = thread.create(function()
         -- 捕获所有异常
-        local status, err = pcall(function()
+        local status, err = pcall(function() 
              Log:append("线程 " .. id .. " 执行冷却单元更换")
             
             -- 详细调试信息，监控 heSlot 和操作
@@ -271,94 +274,47 @@ local function checkDamageHe(transposer,id, hePull)
     lock.heLockThread:detach()
 end
 
--- 使用示例
 local function batchProcess(id)
     local startTime = os.time()
-      Log:append("线程" .. id .. "开始批处理操作")
-    if #reactorLocks ==1 then 
-         Log:append("核电数量太少，无需批处理");
-       return
-       end
-    if timeoutThread and timeoutThread:isRunning() then
-        Log:append("批处理已在进行中")
+    Log:append("线程" .. id .. "开始批处理操作")
+
+    if #reactorLocks == 1 then 
+        Log:append("核电数量太少，无需批处理")
         return
     end
 
-    log("尝试获取锁")
-    local success, err = pcall(function()
-        lock:acquire()
-    end)
-  
-    if not success then
-          Log:append("获取锁失败: " .. tostring(err))
-        return
-    end
+   
+ local status, err = pcall(function()  -- 开始 pcall 函数体
+    -- 遍历所有 reactorLocks 进行批处理检查
+    for i, check in ipairs(reactorLocks) do
+        local transposer = check.transposer
+        local state = check.state
 
-    Log:append("锁已获取")
-    Log:append("批处理模式激活")
-    
+        -- 输出当前线程信息（确保 id 是已定义的变量）
+        Log:append("当前线程 " .. tostring(id) .. " 正在执行批处理操作")
 
-  -- 创建超时线程
-    timeoutThread = Thread:new(function()
-        while os.time() - startTime < lockTimeout + delayTime do
-            if delayTime ~=0 then 
-               Log:append("锁已延迟");
-             end;
-            os.sleep(1)
+        -- 检查状态，如果状态不为 "OK" 则执行检查
+        if state ~= "OK" then
+            -- 检查冷却单元损坏状态
+            local hePull = reactorControl.checkReactorDamage(transposer, direction["reactor"])
+
+            -- 调用冷却单元损坏处理逻辑（确保 checkDamageHe 函数的参数合法）
+            checkDamageHe(transposer, i, hePull)
+
+            -- 更新状态为 "OK"
+            reactorLocks[i].state = "OK"
         end
-        if lock.locked then
-       
-             Log:append("超时: 批处理操作超时，强制释放锁")
-            lock:release()
-            Log:append("锁已释放")
-        end
-    end)
+    end  -- `for` 循环体结束
+end)  -- `pcall` 函数体结束，并且 `function()` 和 `pcall` 本身都有配对的括号
 
-    timeoutThread:start()
-
-    local status, err = pcall(function()
-        redControl.stop(direction["reactor"])
-
-        for i, check in ipairs(reactorLocks) do
-            local transposer = check.transposer
-            local state = check.state
-             
-             Log:append("当前线程" .. id .. "正在执行批处理操作")
-
-            if state ~= "OK" then
-                local hePull = reactorControl.checkReactorDamage(transposer, direction["reactor"])
-       
-                checkDamageHe(transposer, i, hePull)  
-
-                reactorLocks[id].state = "OK"
-         
-                 delayTime=delayTime+1000
-            end
-          
-
-        end
-
-       delayTime=0
-        lock:release()
-         Log:append("批处理模式完毕")
-        log("批处理模式完毕")
-        log("锁已释放")
-    end)
-
-    if not status then
-          Log:append("批处理出错，未知原因: " .. tostring(err))
-        
-    end
-
-    -- 确保超时线程正常结束
-    if timeoutThread and timeoutThread:isRunning() then
-        timeoutThread:join()
-    end
-
-    timeoutThread = nil
+ 
 end
 
 local function checkHe(transposer, id)
+
+  if coolingNeeded and batchProcessId~=id then 
+     Log("当前存在核电冷却单元更换，线程同步中")
+    end  
     local lock = reactorLocks[id]
     local currentTime = os.time()
     local elapsedTime = currentTime - lock.lastHeCheckTime
@@ -388,7 +344,9 @@ local function checkHe(transposer, id)
                 end
                
                 local batchStatus, batchErr = pcall(function()
+                    batchProcessId=id--标记当前进行批处理的线程
                     batchProcess(id)  -- 批处理操作
+                    
                 end)
                 if not batchStatus then
                       Log:append("错误: 批处理操作失败 - " .. tostring(batchErr))
@@ -396,6 +354,7 @@ local function checkHe(transposer, id)
                
                 coolingNeeded = false
                  reactorLocks[id].isReady=true;
+                 batchProcessId=nil;
                  break
             else if he.damage+5>= heliumCoolantcell.damage  then
                 reactorLocks[id].state = "EXCEEDED_10"
