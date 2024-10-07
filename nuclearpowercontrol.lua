@@ -26,7 +26,7 @@ local running = true
 local threads = {}
 local reactorLocks = {}
 local heCheckInterval = 50  -- 基础冷却单元检查间隔
-local uranCheckInterval = 7200 -- 基础燃料棒检查间隔
+local uranCheckInterval = 7200-- 基础燃料棒检查间隔
 local gtBattery={};
 local gtMachine={};
 local timeoutThread = nil  -- 用于保存超时线程的全局变量
@@ -172,7 +172,7 @@ for _, reactor in ipairs(reactorLocks) do
 end
 
      
-    if outSide ~= 0 and isReady and storedEU<maxEU*mode.capacity then
+    if outSide ~= 0 and isReady and storedEU<maxEU*mode.capacity  then
          Log:append("核电仓 " .. id .. " 启动中")
         redControl.start(direction["reactor"])
     elseif outSide == 0 then
@@ -180,13 +180,16 @@ end
         redControl.stop(direction["reactor"])
         stopSignal = true
         os.exit()
-    elseif storedEU>=maxEU*mode.capacity then
-          Log:append("当前电路充足，暂停关机");
-          redControl.stop(direction["reactor"])
-    else
+     elseif not isReady then 
           Log:append("存在核电仓不满足配置，无法启动")
         redControl.stop(direction["reactor"])
+     elseif mode.noneBuffer==1 then
+         redControl.start(direction["reactor"])
+     elseif storedEU>=maxEU*mode.capacity then
+          Log:append("当前电量充足，暂停关机");
+          redControl.stop(direction["reactor"])
     end
+
 end
 
 local function gtBatteryStart(outSide,transposer, id)
